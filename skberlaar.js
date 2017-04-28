@@ -10,8 +10,8 @@ var join = require('path').join;
 var http = require('http');
 var path = require('path');
 var connection = mysql.createConnection({
-  host     : 'degronckel.synology.me', 
-  //host     : '192.168.25.7',
+  //host     : 'degronckel.synology.me', 
+  host     : '192.168.25.7',
   user     : 'root',
   password : 'Hoegaarden',
   database : 'skBerlaar'
@@ -167,8 +167,6 @@ connection.query("SELECT events.teamID, events.event_type, events.match_type, ev
           var ccEmailAddressArray = [];
           ccEmailAddressArray.push(rows[0].trainer_email_address);
           ccEmailAddressArray.push(rows[0].delegee_email_address);
-
-
 
           /*playersquery*/  
           var connquery = "SELECT players.first_name as firstname, players.last_name as lastname, COALESCE((SELECT goals.goals from goals WHERE goals.playerid = players.player_ID AND goals.eventID = " + eventID + "), 0) as goals FROM players where players.player_ID IN " + confirms;
