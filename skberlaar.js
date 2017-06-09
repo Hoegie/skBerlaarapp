@@ -1371,6 +1371,22 @@ connection.query('UPDATE goals SET ? WHERE goals_ID = ? ', [put, req.params.goal
   });
 });
 
+app.delete("/goals/:goalsid",function(req,res){
+  var data = {
+        goalsid: req.params.goalsid
+    };
+    console.log(data.id);
+connection.query('DELETE FROM goals WHERE goals_ID = ?', data.goalsid, function(err,result) {
+/*connection.end();*/
+  if (!err){
+    console.log(result);
+    res.end(JSON.stringify(result));
+  }else{
+    console.log('Error while performing Query.');
+  }
+  });
+});
+
 
 /*RESULTS*/
 
