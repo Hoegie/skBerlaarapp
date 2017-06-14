@@ -35,6 +35,88 @@ var transporter = nodemailer.createTransport({
 });
 
 
+/*IOS push message set up*/
+
+var apnProvider = new apn.Provider({  
+      token: {
+          key: 'certs/apns.p8', // Path to the key p8 file
+          keyId: 'AW53VE2WG7', // The Key ID of the p8 file (available at https://developer.apple.com/account/ios/certificate/key)
+          teamId: '857J4HYVDU', // The Team ID of your Apple Developer Account (available at https://developer.apple.com/account/#/membership/)
+      },
+      production: false // Set to true if sending a notification to a production iOS app
+  });  
+
+var notification = new apn.Notification();
+
+  notification.topic = 'be.degronckel.skBerlaar';
+  notification.expiry = Math.floor(Date.now() / 1000) + 3600;
+//notification.badge = 3;
+  notification.sound = 'ping.aiff';
+  notification.alert = 'Afgelasting !';
+
+/*IOS push messages*/
+
+app.get("/skberlaar/iospush/:teamid",function(req,res){
+  var teamID = req.params.teamid;
+  console.log(teamID);
+  var connquery = "SELECT tokens.accountID, tokens.token FROM tokens LEFT JOIN accounts ON tokens.accountID = accounts.account_ID WHERE accounts.favorites REGEXP '[[:<:]]" + teamID + "[[:>:]]' AND tokens.send = 1 AND tokens.device_type = 'Apple'";
+  connection.query(connquery, function(err, rows, fields) {
+    if (!err){
+      res.end(JSON.stringify(rows));
+      console.log(rows)
+      rows.forEach(function(row, i) {
+          apnProvider.send(notification, row.token).then(function(result) { 
+            console.log(result);
+          });
+      });
+    }else{
+      console.log('Error while performing Query.');
+    }
+ });
+});
+
+
+
+
+/*ANDROID push message setup*/
+
+var alarmMessage = new gcm.Message();
+alarmMessage.addNotification({
+  title: 'SK Berlaar',
+  body: 'afgelasting',
+  icon: 'skberlaarlogo',
+  sound: 'true'
+});
+
+var sender = new gcm.Sender('AIzaSyAqRt3-NOe1ImhUccPAJ9547WuCncAyIsU');
+
+
+/*ANDROID push messages*/
+
+app.get("/skberlaar/androidpush/:teamid",function(req,res){
+var teamID = req.params.teamid;
+  console.log(teamID);
+  var connquery = "SELECT tokens.accountID, tokens.token FROM tokens LEFT JOIN accounts ON tokens.accountID = accounts.account_ID WHERE accounts.favorites REGEXP '[[:<:]]" + teamID + "[[:>:]]' AND tokens.send = 1 AND tokens.device_type = 'Android'";
+  connection.query(connquery, function(err, rows, fields) {
+    if (!err){
+      res.end(JSON.stringify(rows));
+      console.log(rows)
+      rows.forEach(function(row, i) {
+          sender.sendNoRetry(alarmMessage, { to : row.token }, function(err, response) {
+        if(err) console.error(err);
+        else {
+          console.log(JSON.stringify(response));
+        }
+      });
+      });
+    }else{
+      console.log('Error while performing Query.');
+    }
+ });
+});
+
+
+
 
 /*Email handling*/
 
@@ -336,6 +418,22 @@ connection.query('SELECT COUNT(*) as controle from tokens WHERE accountID = ? AN
   });
 });
 
+app.get("/apn/sendflag/:accountid/:deviceid",function(req,res){
+  var data = {
+        accountID: req.params.accountid,
+        deviceID: req.params.deviceid
+    };
+connection.query('SELECT send from tokens WHERE accountID = ? AND device_ID = ?',[data.accountID, data.deviceID], function(err, rows, fields) {
+/*connection.end();*/
+  if (!err){
+    console.log('The solution is: ', rows);
+    res.end(JSON.stringify(rows));
+  }else{
+    console.log('Error while performing Query.');
+  }
+  });
+});
+
 app.post("/apn/new",function(req,res){
   var post = {
         accountID: req.body.accountID,
@@ -370,6 +468,22 @@ connection.query('UPDATE tokens SET ? WHERE accountID = ? and device_ID = ?',[pu
   }
   });
 });
+
+app.put("/apn/sendflag/:accountid/:deviceid",function(req,res){
+  var put = {
+        send: req.body.send
+    };
+    console.log(put);
+connection.query('UPDATE tokens SET ? WHERE accountID = ? and device_ID = ?',[put, req.params.accountid, req.params.deviceid], function(err,result) {
+  if (!err){
+    console.log(result);
+    res.end(JSON.stringify(result.changedRows));
+  }else{
+    console.log('Error while performing Query.');
+  }
+  });
+});
+
 
 /*ACCOUNTS*/
 
